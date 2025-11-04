@@ -463,8 +463,10 @@ async def chat_with_agent(request: AgentRequest):
     
     logger.info("=" * 80)
     logger.info("📨 New agent chat request received")
-    logger.info(f"   User message: {request.user_message[:100]}..." if len(request.user_message) > 100 else f"   User message: {request.user_message}")
-    logger.info(f"   Tools configured: {[f\"{conn.tool}\" + (f\" -> {conn.next_tool}\" if conn.next_tool else \"\") for conn in request.tools]}")
+    user_msg = request.user_message[:100] + "..." if len(request.user_message) > 100 else request.user_message
+    logger.info(f"   User message: {user_msg}")
+    tools_config = [f"{conn.tool}" + (f" -> {conn.next_tool}" if conn.next_tool else "") for conn in request.tools]
+    logger.info(f"   Tools configured: {tools_config}")
     logger.info(f"   Private key provided: {'Yes' if request.private_key else 'No'}")
     
     try:
