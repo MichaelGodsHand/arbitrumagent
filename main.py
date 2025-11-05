@@ -242,6 +242,12 @@ IMPORTANT RULES:
 - Provide transaction hashes and explorer links when available
 - Explain what each operation does in simple terms
 - For sequential executions, complete the ENTIRE chain before responding
+
+CRITICAL: When interpreting tool results:
+- Check the tool result message carefully. If it says "executed successfully", the operation SUCCEEDED
+- Only report failures if the tool result explicitly states "failed" or shows an error
+- Report ALL tool executions accurately - do not report successful operations as failures
+- If multiple tools were executed, report the status of EACH tool separately and accurately
 """
     
     return system_prompt
@@ -277,17 +283,52 @@ def execute_tool(tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
         else:
             raise ValueError(f"Unsupported HTTP method: {method}")
         
-        response.raise_for_status()
-        return {
-            "success": True,
-            "tool": tool_name,
-            "result": response.json()
-        }
-    except requests.exceptions.RequestException as e:
+        # Check if response is successful
+        if response.status_code >= 200 and response.status_code < 300:
+            try:
+                result_data = response.json()
+            except json.JSONDecodeError:
+                result_data = {"raw_response": response.text}
+            
+            return {
+                "success": True,
+                "tool": tool_name,
+                "status_code": response.status_code,
+                "result": result_data
+            }
+        else:
+            # HTTP error status code
+            try:
+                error_data = response.json()
+            except json.JSONDecodeError:
+                error_data = {"error": response.text}
+            
+            return {
+                "success": False,
+                "tool": tool_name,
+                "status_code": response.status_code,
+                "error": error_data if isinstance(error_data, dict) else {"message": str(error_data)}
+            }
+    except requests.exceptions.HTTPError as e:
+        # HTTP error (raised by raise_for_status or similar)
         return {
             "success": False,
             "tool": tool_name,
-            "error": str(e)
+            "error": {"message": f"HTTP {e.response.status_code}: {str(e)}"} if hasattr(e, 'response') else {"message": str(e)}
+        }
+    except requests.exceptions.RequestException as e:
+        # Network or other request errors
+        return {
+            "success": False,
+            "tool": tool_name,
+            "error": {"message": str(e)}
+        }
+    except Exception as e:
+        # Catch any other unexpected errors
+        return {
+            "success": False,
+            "tool": tool_name,
+            "error": {"message": f"Unexpected error: {str(e)}"}
         }
 
 def get_openai_tools(tool_names: List[str]) -> List[Dict[str, Any]]:
@@ -384,11 +425,22 @@ def process_agent_conversation(
             result = execute_tool(function_name, function_args)
             all_tool_results.append(result)
             
+            # Format tool result for the agent with clear success/failure indication
+            if result.get("success"):
+                result_content = f"Tool '{function_name}' executed successfully (Status: {result.get('status_code', 'N/A')}). Result: {json.dumps(result.get('result', {}), indent=2)}"
+            else:
+                error_info = result.get("error", {})
+                if isinstance(error_info, dict):
+                    error_msg = error_info.get("message", str(error_info))
+                else:
+                    error_msg = str(error_info)
+                result_content = f"Tool '{function_name}' failed (Status: {result.get('status_code', 'N/A')}). Error: {error_msg}"
+            
             # Add tool result to messages
             messages.append({
                 "role": "tool",
                 "tool_call_id": tool_call.id,
-                "content": json.dumps(result)
+                "content": result_content
             })
         
         # Check if we need to continue with sequential tools
