@@ -10,7 +10,7 @@ import uvicorn
 
 load_dotenv()
 
-app = FastAPI(title="Somnia AI Agent Builder")
+app = FastAPI(title="Arbitrum AI Agent Builder")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Tool Definitions
@@ -28,42 +28,31 @@ TOOL_DEFINITIONS = {
             },
             "required": ["privateKey", "toAddress", "amount", "tokenAddress"]
         },
-        "endpoint": "https://somniabackend-739298578243.us-central1.run.app/transfer",
+        "endpoint": "https://arbitrumbackend-739298578243.us-central1.run.app/transfer",
         "method": "POST"
     },
     "swap": {
         "name": "swap",
-        "description": "Swap one token for another. Requires privateKey, tokenIn, tokenOut, amountIn, and slippageTolerance.",
+        "description": "Swap one token for another. Requires privateKey, tokenIn (address or 'native' for native token), tokenOut, amountIn, slippageTolerance, poolFee (hardcoded as 500), and routerType (hardcoded as 'uniswap_v3').",
         "parameters": {
             "type": "object",
             "properties": {
                 "privateKey": {"type": "string", "description": "Private key of the wallet"},
-                "tokenIn": {"type": "string", "description": "Input token contract address"},
+                "tokenIn": {"type": "string", "description": "Input token contract address or 'native' if it's a native token"},
                 "tokenOut": {"type": "string", "description": "Output token contract address"},
                 "amountIn": {"type": "string", "description": "Amount of input tokens"},
-                "slippageTolerance": {"type": "number", "description": "Slippage tolerance percentage"}
+                "slippageTolerance": {"type": "number", "description": "Slippage tolerance percentage"},
+                "poolFee": {"type": "number", "description": "Pool fee (hardcoded as 500)"},
+                "routerType": {"type": "string", "description": "Router type (hardcoded as 'uniswap_v3')"}
             },
-            "required": ["privateKey", "tokenIn", "tokenOut", "amountIn", "slippageTolerance"]
+            "required": ["privateKey", "tokenIn", "tokenOut", "amountIn", "slippageTolerance", "poolFee", "routerType"]
         },
-        "endpoint": "https://somniabackend-739298578243.us-central1.run.app/swap",
+        "endpoint": "https://arbitrumbackend-739298578243.us-central1.run.app/swap",
         "method": "POST"
-    },
-    "get_balance": {
-        "name": "get_balance",
-        "description": "Get STT balance of a wallet address. Requires only the wallet address.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "address": {"type": "string", "description": "Wallet address to check balance"}
-            },
-            "required": ["address"]
-        },
-        "endpoint": "https://somniabackend-739298578243.us-central1.run.app/balance/{address}",
-        "method": "GET"
     },
     "deploy_erc20": {
         "name": "deploy_erc20",
-        "description": "Deploy a new ERC-20 token. Requires privateKey, name, symbol, and initialSupply.",
+        "description": "Deploy a new ERC-20 token. Requires privateKey, name, symbol, and initialSupply. IMPORTANT: After initiating deployment, you MUST inform the user that deployment takes approximately 2 minutes to complete and they should wait for the process to finish.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -74,12 +63,12 @@ TOOL_DEFINITIONS = {
             },
             "required": ["privateKey", "name", "symbol", "initialSupply"]
         },
-        "endpoint": "https://somniabackend-739298578243.us-central1.run.app/deploy-token",
+        "endpoint": "https://token-739298578243.us-central1.run.app/deploy-token",
         "method": "POST"
     },
     "deploy_erc721": {
         "name": "deploy_erc721",
-        "description": "Deploy a new ERC-721 NFT collection. Requires privateKey, name, and symbol.",
+        "description": "Deploy a new ERC-721 NFT collection. Requires privateKey, name, and symbol. IMPORTANT: After initiating deployment, you MUST inform the user that deployment takes approximately 2 minutes to complete and they should wait for the process to finish.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -89,7 +78,7 @@ TOOL_DEFINITIONS = {
             },
             "required": ["privateKey", "name", "symbol"]
         },
-        "endpoint": "https://somniabackend-739298578243.us-central1.run.app/create-nft-collection",
+        "endpoint": "https://nftserver-739298578243.us-central1.run.app/deploy-nft",
         "method": "POST"
     },
     "create_dao": {
@@ -105,7 +94,7 @@ TOOL_DEFINITIONS = {
             },
             "required": ["privateKey", "name", "votingPeriod", "quorumPercentage"]
         },
-        "endpoint": "https://somniabackend-739298578243.us-central1.run.app/create-dao",
+        "endpoint": "https://arbitrumbackend-739298578243.us-central1.run.app/create-dao",
         "method": "POST"
     },
     "airdrop": {
@@ -120,7 +109,7 @@ TOOL_DEFINITIONS = {
             },
             "required": ["privateKey", "recipients", "amount"]
         },
-        "endpoint": "https://somniabackend-739298578243.us-central1.run.app/airdrop",
+        "endpoint": "https://arbitrumbackend-739298578243.us-central1.run.app/airdrop",
         "method": "POST"
     },
     "fetch_price": {
@@ -133,7 +122,7 @@ TOOL_DEFINITIONS = {
             },
             "required": ["query"]
         },
-        "endpoint": "https://somniabackend-739298578243.us-central1.run.app/token-price",
+        "endpoint": "https://arbitrumbackend-739298578243.us-central1.run.app/token-price",
         "method": "POST"
     },
     "deposit_yield": {
@@ -149,12 +138,12 @@ TOOL_DEFINITIONS = {
             },
             "required": ["privateKey", "tokenAddress", "depositAmount", "apyPercent"]
         },
-        "endpoint": "https://somniabackend-739298578243.us-central1.run.app/yield",
+        "endpoint": "https://arbitrumbackend-739298578243.us-central1.run.app/yield",
         "method": "POST"
     },
     "wallet_analytics": {
         "name": "wallet_analytics",
-        "description": "Get wallet analytics including ERC-20 token balances. Requires wallet address.",
+        "description": "Get comprehensive wallet analytics including ALL token balances (ERC-20 tokens). Requires wallet address. Returns detailed information about all tokens held by the wallet.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -162,8 +151,8 @@ TOOL_DEFINITIONS = {
             },
             "required": ["address"]
         },
-        "endpoint": "https://api.subgraph.somnia.network/public_api/data_api/somnia/v1/address/{address}/balance/erc20",
-        "method": "GET"
+        "endpoint": "https://arbitrumbackend-739298578243.us-central1.run.app/wallet-analytics",
+        "method": "POST"
     }
 }
 
@@ -199,7 +188,7 @@ def build_system_prompt(tool_connections: List[ToolConnection]) -> str:
     # Check if sequential execution exists
     has_sequential = any(conn.next_tool for conn in tool_connections)
     
-    system_prompt = """You are an AI agent for the Somnia blockchain platform. You help users perform blockchain operations using the tools available to you.
+    system_prompt = """You are an AI agent for the Arbitrum blockchain platform. You help users perform blockchain operations using the tools available to you.
 
 AVAILABLE TOOLS:
 """
@@ -242,12 +231,7 @@ IMPORTANT RULES:
 - Provide transaction hashes and explorer links when available
 - Explain what each operation does in simple terms
 - For sequential executions, complete the ENTIRE chain before responding
-
-CRITICAL: When interpreting tool results:
-- Check the tool result message carefully. If it says "executed successfully", the operation SUCCEEDED
-- Only report failures if the tool result explicitly states "failed" or shows an error
-- Report ALL tool executions accurately - do not report successful operations as failures
-- If multiple tools were executed, report the status of EACH tool separately and accurately
+- CRITICAL: When deploying tokens (deploy_erc20) or NFTs (deploy_erc721), you MUST inform the user that deployment takes approximately 2 minutes to complete and they should wait for the process to finish
 """
     
     return system_prompt
@@ -262,18 +246,19 @@ def execute_tool(tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
     endpoint = tool_def["endpoint"]
     method = tool_def["method"]
     
+    # Hardcode poolFee and routerType for swap tool
+    if tool_name == "swap":
+        parameters["poolFee"] = 500
+        parameters["routerType"] = "uniswap_v3"
+    
     # Handle URL parameters for GET requests
     if "{address}" in endpoint:
         if "address" in parameters:
             endpoint = endpoint.replace("{address}", parameters["address"])
             parameters = {}
     
-    # Prepare headers - check if Bearer token is needed
+    # Prepare headers
     headers = {}
-    if "api.subgraph.somnia.network" in endpoint:
-        bearer_token = os.getenv("SOMNIA_BEARER_TOKEN")
-        if bearer_token:
-            headers["Authorization"] = f"Bearer {bearer_token}"
     
     try:
         if method == "POST":
@@ -283,52 +268,17 @@ def execute_tool(tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
         else:
             raise ValueError(f"Unsupported HTTP method: {method}")
         
-        # Check if response is successful
-        if response.status_code >= 200 and response.status_code < 300:
-            try:
-                result_data = response.json()
-            except json.JSONDecodeError:
-                result_data = {"raw_response": response.text}
-            
-            return {
-                "success": True,
-                "tool": tool_name,
-                "status_code": response.status_code,
-                "result": result_data
-            }
-        else:
-            # HTTP error status code
-            try:
-                error_data = response.json()
-            except json.JSONDecodeError:
-                error_data = {"error": response.text}
-            
-            return {
-                "success": False,
-                "tool": tool_name,
-                "status_code": response.status_code,
-                "error": error_data if isinstance(error_data, dict) else {"message": str(error_data)}
-            }
-    except requests.exceptions.HTTPError as e:
-        # HTTP error (raised by raise_for_status or similar)
+        response.raise_for_status()
         return {
-            "success": False,
+            "success": True,
             "tool": tool_name,
-            "error": {"message": f"HTTP {e.response.status_code}: {str(e)}"} if hasattr(e, 'response') else {"message": str(e)}
+            "result": response.json()
         }
     except requests.exceptions.RequestException as e:
-        # Network or other request errors
         return {
             "success": False,
             "tool": tool_name,
-            "error": {"message": str(e)}
-        }
-    except Exception as e:
-        # Catch any other unexpected errors
-        return {
-            "success": False,
-            "tool": tool_name,
-            "error": {"message": f"Unexpected error: {str(e)}"}
+            "error": str(e)
         }
 
 def get_openai_tools(tool_names: List[str]) -> List[Dict[str, Any]]:
@@ -425,22 +375,11 @@ def process_agent_conversation(
             result = execute_tool(function_name, function_args)
             all_tool_results.append(result)
             
-            # Format tool result for the agent with clear success/failure indication
-            if result.get("success"):
-                result_content = f"Tool '{function_name}' executed successfully (Status: {result.get('status_code', 'N/A')}). Result: {json.dumps(result.get('result', {}), indent=2)}"
-            else:
-                error_info = result.get("error", {})
-                if isinstance(error_info, dict):
-                    error_msg = error_info.get("message", str(error_info))
-                else:
-                    error_msg = str(error_info)
-                result_content = f"Tool '{function_name}' failed (Status: {result.get('status_code', 'N/A')}). Error: {error_msg}"
-            
             # Add tool result to messages
             messages.append({
                 "role": "tool",
                 "tool_call_id": tool_call.id,
-                "content": result_content
+                "content": json.dumps(result)
             })
         
         # Check if we need to continue with sequential tools
@@ -512,7 +451,7 @@ async def chat_with_agent(request: AgentRequest):
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "service": "Somnia AI Agent Builder"}
+    return {"status": "healthy", "service": "Arbitrum AI Agent Builder"}
 
 @app.get("/tools")
 async def list_tools():
@@ -523,4 +462,4 @@ async def list_tools():
     }
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8080)
